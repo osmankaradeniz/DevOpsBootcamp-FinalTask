@@ -1,0 +1,173 @@
+variables: 
+  PATH_PROJECT: "react-app"
+  TF_PATH : "terraform"
+
+  DHUB_USERNAME: ${DHUB_USERNAME}
+  DHUB_PASSWORD: ${DHUB_PASSWORD}
+  DOCKER_TLS_CERTDIR: ""
+
+  AWS_REGION: eu-central-1
+  AWS_ACCOUNT_ID: 978871063865
+  IMAGE_NAME: reactjs-app
+  ECR_IMAGE: $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_NAME:latest
+
+# CI/CD aşamalarını belirle
+stages:
+  - build
+  - test
+  - release
+  - deploy
+  - destroy
+
+# Önceki işlemler için ortak ayarlar ve adımlar
+before_script:
+  - ls -all
+  - cd $PATH_PROJECT || true
+  - ls -all
+
+# Build aşaması
+build:     
+  stage: build
+  image: node:14
+  script: 
+    - echo "BUILD START"
+    - npm install     
+    - npm run build    
+    - echo "BUILD FINISH" 
+  artifacts:
+    paths:
+      - $PATH_PROJECT/build
+      - $PATH_PROJECT/node_modules
+
+# Test aşaması
+test:     
+  stage: test
+  image: node
+  needs:
+    - build
+  script:
+    - echo "Testing App"
+    - npm test
+
+# Docker Hub'a release işlemi
+release-docker:   
+  stage: release
+  image: docker:latest
+  services: 
+    - name: docker:dind
+  script:
+    - echo "Docker Hub Release Start"
+    - docker login -u="${DHUB_USERNAME}" -p="${DHUB_PASSWORD}"
+    - docker build -t ${IMAGE_NAME} .
+    - docker image tag ${IMAGE_NAME}:latest ${DHUB_USERNAME}/${IMAGE_NAME}:latest
+    - docker image push ${DHUB_USERNAME}/${IMAGE_NAME}:latest
+    - echo "Docker Hub Release Finish"
+  needs:
+    - build
+    - test
+
+# Amazon ECR'a release işlemi
+release-amazon: 
+  stage: release
+  image: docker:latest
+  services: 
+    - name: docker:dind 
+  script:
+    - echo "AWS Release Start"
+    - apk add --no-cache python3 py3-pip
+    - pip3 install --no-cache-dir awscli
+    - echo "AWS ECR login"
+    - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+    - docker pull $ECR_IMAGE || true
+    - docker build --cache-from $ECR_IMAGE -t $ECR_IMAGE .
+    - docker push $ECR_IMAGE
+    - echo "AWS Release Finish"
+  needs:
+    - build
+    - test
+
+# TERRAFORM İŞLEMLERİ
+
+# Dağıtımı doğrula
+deploy-validate:
+  stage: deploy
+  image:
+    name: hashicorp/terraform:latest
+    entrypoint:
+      - /usr/bin/env
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  before_script:
+    - cd $TF_PATH
+    - terraform init
+  script:
+    - echo "Deployment Validate Start"
+    - terraform validate
+    - echo "Deployment Validate Finish"
+  needs:
+    - release-amazon
+
+# Dağıtımı hazırla
+deploy-plan:
+  stage: deploy
+  image:
+    name: hashicorp/terraform:latest
+    entrypoint:
+      - /usr/bin/env
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  before_script:
+    - cd $TF_PATH
+    - terraform init
+  script:
+    - echo "Deployment Preparation Start"
+    - terraform plan -out "planfile"
+    - echo "Deployment Preparation Finish"
+    - ls -all
+  needs:
+    - deploy-validate
+  artifacts:
+    paths:
+      - $TF_PATH/planfile
+
+# Dağıtımı uygula
+deploy-apply:
+  stage: deploy
+  image:
+    name: hashicorp/terraform:latest
+    entrypoint:
+      - /usr/bin/env
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  before_script:
+    - cd $TF_PATH
+    - terraform init
+  script:
+    - echo "Deployment Apply Start"
+    - terraform apply --auto-approve "planfile"
+    - echo "Deployment Apply Finish"
+    - ls -all
+  when: manual
+  needs:
+    - deploy-plan
+  allow_failure: true
+  artifacts:
+    when: always
+    paths:
+      - $TF_PATH/*.{tfstate}
+
+# Dağıtımı sil
+destroy-apply:
+  stage: destroy
+  image:
+    name: hashicorp/terraform:latest
+    entrypoint:
+      - /usr/bin/env
+      - "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  before_script:
+    - cd $TF_PATH
+    - terraform init
+  script:
+    - echo "Destroying Start"
+    - terraform destroy --auto-approve
+    - echo "Destroying Finish"
+  when: manual
+  needs:
+    - deploy-apply

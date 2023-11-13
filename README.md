@@ -6,19 +6,21 @@ Bu proje bir React uygulamasının DevOps kültürü ile hayata geçirme süreci
 
 1. [Proje Hakkında](#proje-hakkında)
 2. [React.js uygulamasını oluşturma](#reactjs-uygulamasını-oluşturma)
-3. [Docker ile İmaj Oluşturma](#docker-ile-i̇maj-oluşturma)
-
+3. [Docker ile imaj oluşturma](#docker-ile-imaj-oluşturma)
+4. [Gitlab CI/CD ile işlem hattı tasarlama ve geliştirme](#gitlab-cicd-ile-işlem-hattı-tasarlama-ve-geliştirme)
+5. [Terraform altyapı sağlayıcısı eşliğinde AWS hizmetlerine Dağıtım gerçekleştirmesi](./terraform)
+6. [Kubernetes ortamında uygulamanın dağıtılması](./kubernetes)
 </br>
 
 
 # Proje Hakkında
 Bitirme projesi dökümanında bulunan yönergeleri takip ederek başlangıç aşamasında React uygulaması oluşturma aracı [Create React App](https://github.com/facebook/create-react-app) kullanarak projeyi oluşturdum.
-Oluşturduğum bu projeyi dockerize etmek üzere bir imaj oluşturmak için `Dockerfile` dosyasını hazırladım ayrıca oluşacak konteyner içerisinde olmaması gereken dosyaları hariç tutmak için `.dockerignore` dosyasını ekledim ve bu şekilde imajı olabilecek en minimal boyuta indirgemeye çalıştım. Gitlab CI/CD aracını kullanarak bir boruhattı tasarladım ve Terraform altyapı sağlayıcısı eşliğinde AWS hizmetleri üzerinde ve ayrıca Kubernetes ortamında uygulamayı hayata geçirdim.
+Oluşturduğum bu projeyi dockerize etmek üzere bir imaj oluşturmak için `Dockerfile` dosyasını hazırladım ayrıca oluşacak konteyner içerisinde olmaması gereken dosyaları hariç tutmak için `.dockerignore` dosyasını ekledim ve bu şekilde imajı olabilecek en minimal boyuta indirgemeye çalıştım. Gitlab CI/CD aracını kullanarak bir işlem hattı tasarladım ve Terraform altyapı sağlayıcısı eşliğinde AWS hizmetleri üzerinde ve ayrıca Kubernetes ortamında uygulamayı hayata geçirdim.
 <br/>
 #### Kullanılan Teknolojiler : 
-<span>
-<img src="https://i.ibb.co/ThH5V79/logos.png" width=800 heigh=600   style="align:center" />
-</span>
+<img src="./images/logos.png" width=800 heigh=600   style="align:center" />
+
+
 
 <br/>
 <br/>
@@ -66,7 +68,7 @@ Komutunu koşturdum uygulama sorunsuz bir şekilde ayağa kalktı terminal ve ta
 <br/>
 
 
-# Docker ile İmaj Oluşturma
+# Docker ile imaj oluşturma
 - **Docker ortam sağlayıcısı** olarak süreci `Docker Desktop` uygulaması ile yürüttüm  
   - Docker Desktop , Windows ve Mac'te kapsayıcıları oluşturmaya ve çalıştırmaya başlamanızı, docker uygulamarını hızla derlemenizi, test etmenizi ve dağıtmanızı sağlayan bir yazılım platformudur.
     
@@ -186,8 +188,173 @@ access.log  error.log
 /var/log/nginx # nginx -v
 nginx version: nginx/1.25.3
  ```
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
+# Gitlab CI/CD ile işlem hattı tasarlama ve geliştirme
+Dökümanda bulunan yönergelere göre bu aşamada `Dockerfile` dosyası dahil olacak şekilde bir işlem hattı tasarımı ve geliştirmesi sürecini gerçekleştirdim.
+
+
+<details>
+  <summary>Sürekli Entegrasyon (CI) nedir ?</summary>
+  <p>
+
+  CI, yazılım geliştirme sürecinin bir parçasıdır ve genellikle şu adımları içerir:
+  
+  - **Versiyon Kontrol Sistemine Entegrasyon:**
+    Geliştiriciler, kodlarını bir versiyon kontrol sistemine (örneğin Git) yükler.
+  
+  - **Otomatik Derleme ve Test:**
+    Yeni kod, CI sürecinde otomatik olarak derlenir ve test edilir. Derleme ve test işlemleri, her yeni kod değişikliği yapıldığında tetiklenir.
+  
+  - **Hata Tespiti:**
+    Otomatik testler hataları tespit eder ve geliştiricilere geri bildirimde bulunur. Bu aşama, hataların daha erken tespit edilmesini ve düzeltilmesini sağlar.
+  
+  - **Tekrarlanabilirlik:**
+    CI, kodun her zaman aynı şekilde derlenmesini ve test edilmesini sağlar. Bu, kodun farklı ortamlarda tutarlı bir şekilde çalışmasını sağlar.
+  
+  - **Otomatik Raporlama:**
+    CI süreci genellikle derleme ve test sonuçlarıyla ilgili raporlar oluşturur.
+
+  Sürekli entegrasyonun temel amacı, geliştiricilerin kodlarını sık sık entegre etmelerini ve olası hataları erken aşamada tespit ederek yazılım kalitesini artırmalarını sağlamaktır.
+
+  </p>
+</details>
 
 
 
+<details>
+  <summary>Sürekli Dağıtım (CD) nedir ?</summary>
+  <p>
+
+  Sürekli Dağıtım, yazılımın otomatik olarak bir ortamdan diğerine taşınmasını ifade eder. CD, genellikle şu iki kısma ayrılır:
+
+  - **Sürekli Dağıtım (Continuous Deployment):**
+    Başarıyla tamamlanan CI süreçlerinden geçen her kod değişikliği, otomatik olarak canlı üretim ortamına dağıtılır. Bu, yazılımın hızlı ve güvenilir bir şekilde kullanıcılara sunulmasını sağlar.
+  
+  - **Sürekli Dağıtım (Continuous Delivery):**
+    Başarıyla tamamlanan CI süreçlerinden geçen her kod değişikliği, bir üretim ortamına otomatik olarak taşınır, ancak bu ortamda manuel bir onay süreci vardır. Yazılımın dağıtımı için manuel bir kontrol sağlar.
+
+  Sürekli Dağıtım, yazılımın kullanıma sunulma sürecini hızlandırır, hataları en aza indirir ve müşterilere daha hızlı değer sağlamayı mümkün kılar.
+
+  </p>
+</details>
+
+
+
+
+
+<details>
+  <summary>GitLab İşlem Hattı (Pipeline) nedir ?</summary>
+
+  İşlem Hattı, yazılım geliştirme sürecindeki adımları belirleyen ve bu adımları otomatikleştirerek yazılım projelerini daha verimli hale getiren bir araçtır. Yazılımın derlenmesi, test edilmesi ve dağıtılması gibi kritik süreçleri yönetir, bu da geliştiricilere hataları daha erken aşamalarda tespit etme ve düzeltme şansı tanır.
+
+  - <strong>GitLab İşlem Hattı (Pipeline) temel öğeleri şunlardır:</strong>
+    - <strong>Aşama (Stage):</strong>
+      İşlem hattının belirli bir noktasında gerçekleşen bir dizi işlemi temsil eder. Genellikle yazılım geliştirme sürecinin belirli bir aşamasını temsil eder, örneğin derleme, test veya dağıtım aşamaları.
+    - <strong>Görev (Job):</strong>
+      İşlem hattı içindeki belirli bir adımı temsil eder. Her görev, belirli bir işlevi gerçekleştirmek için bir dizi komut içerebilir.
+    - <strong>Çalıştırıcı (Runner):</strong>
+      Görevleri gerçekleştirmekten sorumlu olan bilgisayar kaynaklarıdır. Çalıştırıcılar, İşlem hattının belirli bir aşamasındaki görevleri alır ve gerçekleştirir.
+
+      - <strong>Çalıştırıcı (Runner) Türleri:</strong>
+        - <strong>Paylaşılan (Shared) Çalıştırıcılar:</strong>
+          GitLab Çalıştırıcıları, genel olarak birçok proje tarafından kullanılabilen ve farklı projelerden gelen talepleri karşılamak üzere tasarlanmış bir çalıştırıcı türüdür. Çeşitli projeler tarafından paylaşılarak geniş bir kullanım alanına sahiptir ve genellikle GitLab'ın ana sunucularında işlev görür.
+        - <strong>Belirli (Specific) Çalıştırıcılar:</strong>
+          - <strong>Projeye Özel Çalıştırıcılar:</strong>
+            Belirli bir projeye özgü olarak yapılandırılan ve sadece bu projede çalışan çalıştırıcılardır.
+          - <strong>Grup Çalıştırıcılar:</strong>
+            Bir projeden ziyade, bir proje grubuna atanmış çalıştırıcılardır.
+          - <strong>Ortak Çalıştırıcılar:</strong>
+            GitLab CI/CD'nin tüm örneklerine (instances) hizmet veren ve tüm projelerde kullanılabilen çalıştırıcılardır.
+</details>
+
+
+
+### **İşlem hattı tasarımı ve geliştirilmesi**
+Bu noktada dikkat ettiğim döküman içerisindeki yönergeler bu aşamada `En uygun DevOps standartlarını uygulayın ve takip edin` şeklinde bir yönlendirmede bulunmaktadır.
+Bu aşamadan sonra ise sürecin AWS Hizmetleri üzerinde dağıtmamızı ve bunu terraform altyapı sağlayıcısı ile yapılmasını istemektedir.
+
+Bunları göz önüne alarak yapmış olduğum araştırmalar neticesinde basit bir react.js uygulaması için en uygun DevOps işlem hattını şu şekilde tasarladım ;
+
+ - ### CI/CD İşlem Hattı Mimarisi
+
+ İşlem hattı oluşturmak için Gitlab CI/CD aracını kullandım ve bu aracın işlem hattını yürütebilmesi için **[GİTLAB CI/CD Dosyası](./.gitlab-ci.yml)** oluşturdum.
+
+<img src="./images/gitlab-ci-cd.png" width=1000 heigh=700   style="align:center" />
+
+  - **Öncelikle mutlaka Gitlab CI/CD değişkenlerini tanımlamamız gerekmektedir.**
+     <img src="./images/gitlab-vars.PNG" width=800 heigh=500   style="align:center" />
+ - ## CI/CD İşlem Hattı
+   - <span style="text-align: center;">
+         <img src="./images/gitlab-ci-cd-pipelines.png" width=800 heigh=600   style="align:center" /><br/>
+         <b> İşlem hattı geliştirme sürecimden bir ekran.</b>
+     </span> 
+   - <span style="text-align: center;">
+         <img src="./images/gitlab-ci-cd-runned.png" width=800 heigh=600   style="align:center" /><br/>
+         <b> Ve işlem hattımın son hali.</b>
+     </span> 
+   - ## İş Akış Tablosu
+      <div style="text-align: center;">
+          <table style="margin: 0 auto;">
+            <tr>
+              <th>Job No.</th>
+              <th>Ana Aşama Adı</th>
+              <th>Job Adı</th>
+              <th>İşlev</th>
+            </tr>
+              <td>1</td>
+              <td>Build</td>
+              <td>build</td>
+              <td>React uygulamasını derler ve bağımlılıkları oluşturur. Node.js 14 imajını kullanarak bağımlılıkları yükler. Derlenmiş dosyaları `$PATH_PROJECT/build` dizinine kaydeder. Bağımlılıkları `$PATH_PROJECT/node_modules` dizinine kaydeder.</td>
+            </tr>
+            <tr>
+              <td>2</td>
+              <td>Test</td>
+              <td>test</td>
+              <td>Uygulamanın testlerini çalıştırır. Önceki aşamadan gelen çıktıları kullanarak testleri yürütür.</td>
+            </tr>
+            <tr>
+              <td>3</td>
+              <td rowspan="2">Release</td>
+              <td>release-docker</td>
+              <td>Docker Hub'a sürümleme yapar. Docker imajını oluşturur. Docker Hub'a giriş yapar. İmajı etiketler ve Docker Hub'a sürümleme yapar.</td>
+            </tr>
+            <tr>
+              <td>4</td>
+              <td>release-amazon</td>
+              <td>AWS Elastic Container Registry'e sürümleme yapar. AWS CLI ve Docker'ı kullanarak AWS ECR'e giriş yapar. Eğer varsa önceki sürümü çeker, yeni sürümü oluşturur ve AWS ECR'e gönderir.</td>
+            </tr>
+            <tr>
+              <td>5</td>
+              <td rowspan="3">Deploy</td>
+              <td>deploy-validate</td>
+              <td>Terraform dosyalarını doğrular. Terraform dosyalarını başlatır. `terraform validate` komutu ile yapıyı doğrular.</td>
+            </tr>
+            <tr>
+              <td>6</td>
+              <td>deploy-plan</td>
+              <td>Terraform ile altyapının planını oluşturur. Terraform dosyalarını başlatır. `terraform plan` komutu ile altyapının planını oluşturur.</td>
+            </tr>
+            <tr>
+              <td>7</td>
+              <td>deploy-apply</td>
+              <td>Terraform ile altyapıyı uygular. Terraform dosyalarını başlatır. `terraform apply` komutu ile altyapıyı uygular. (Manuel onay gerektirir)</td>
+            </tr>
+            <tr>
+              <td>8</td>
+              <td>Destroy</td>
+              <td>destroy-apply</td>
+              <td>Terraform ile altyapıyı siler. Terraform dosyalarını başlatır. `terraform destroy` komutu ile altyapıyı siler. (Manuel onay gerektirir)</td>
+            </tr>
+          </table>
+      </div>
+<br/>Bu yapıyı birçok araştırma yaptıktan sonra standartlara yakın bir yaklaşım olduğunu düşündüğüm için tercih ettim. <br/>
+  - ## İşlem Hattı çıktısı ;
+    <img src="./images/reactjs-app.PNG" width=1000 heigh=700   style="align:center" /><br/>
+ 
 
 

@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reactjs-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: reactjs-app
+  template:
+    metadata:
+      labels:
+        app: reactjs-app
+    spec:
+      containers:
+      - name: reactjs-app
+        image: osmankaradeniz31/reactjs-app:latest # Docker Image
+        resources:
+          limits:
+            memory: "512Mi" #MB
+            cpu: "300m"     #mCPU
+        ports:
+        - containerPort: 8080
